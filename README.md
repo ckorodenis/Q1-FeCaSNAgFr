@@ -1,114 +1,34 @@
-Overview of functions and their description
 
------------------------------------------------------------------------------------------
+Mint NFT by category/parameter
 
-1. mintForPlayer
+1 - If this ASC is contacted by the owner using his wallet address, private key and the parameter "Fe" or "Ca" or "S" or "N" or "Ag" or "Fr" I want the ASC to output the NFT from the appropriate category according to the type of parameter and the NFT to be output to the player's wallet address which will also be passed to him so we will contact the ASC roughly as follows 
 
-Description:
-This function is used to create a new NFT (mint) for a specific player. Based on a parameter (param), the category of the NFT is determined (e.g. "Fe" for iron, "Ca" for calcium, etc.). The function first verifies that the caller is the authorized owner of the contract. Upon successful verification, the NFT will be minted into the player's wallet.
+"<ownerwalletaddress> <ownerprivatekey> <parameter> <playerwalletaddress>"  
 
-Inputs:
-OwnerWallet: The address of the contract owner (authorization).
-privateKey: Private key for owner authentication.
-param: NFT category (Fe, Ca, S, N, Ag, Fr).
-playerWallet: Address of the player's wallet.
+-----------------------------------------------------------------------------------
 
-Output: Returns a success or error message if the parameter is invalid or authorization fails.
+Combination Fe; Ca
 
------------------------------------------------------------------------------------------
+2 - If any player sends 4 pieces of matching NFTs from the "Fe only" or "Ca only" category to the ASC and the ownership of these NFTs is verified to be owned by our ASC. So the player will have to send either 4 pieces of NFTs of "Fe" or 4 pieces of NFTs of "Ca" category, other combinations are not allowed and will be returned to the player, at the same time they must be NFTs with metadata value Crystals = Stable only. An action will be triggered that will select two of these NFTs and send them to the wallet address for token burning "0000000000000000000000000000000000000000000000000000" two pieces of these NFTs will be burned and the remaining two pieces of NFTs will have their value in the Crystals metadata changed from "Stable" to "Reduced", also the reference to the NFT image will be changed from "<NFT number>Stable.jpg" to "<NF numberTReduced. jpg" and then these two NFTs will be returned to the player's wallet and then ASC will automatically punch the same player's wallet with NFTs from the "S" or "N" category depending on what NFTs he provided at the beginning, if 4x from the "Fe" category the "S" NFT will be punched and if 4x from the "Ca" category the "N" NFT will be punched 
 
-2. combineFeCaNFTs
+-----------------------------------------------------------------------------------
 
-Description:
-Combines four NFTs of the category "Fe" (iron) or "Ca" (calcium) into a new unique NFT. Two NFTs are burned, the metadata of the remaining two NFTs is updated, and the player receives a reward NFT ("S" for "Fe" or "N" for "Ca").
+Combination S; N
 
-Conditions:
-Exactly 4 NFTs must be provided.
-The NFT must be of the category "Fe" or "Ca" and have the status "Stable".
+3 - If any player sends 4 pieces of matching NFTs from category "S" or "N" to the ASC and ownership of these NFTs is verified to be owned by our ASC. So the player will have to send either 3 pieces of NFT "S" 1 piece of NFT from category "N" or 2 pieces of NFT "S" 2 pieces of NFT from category "N" , other combinations are not allowed and will be returned to the player, at the same time they must be NFT with metadata value Crystals = Stable only. An action will be triggered that will select two of these NFTs and send them to the wallet address for token burning "0000000000000000000000000000000000000000000000000000" so two of these NFTs will be burned and the remaining two NFTs will have their Crystals metadata value changed from "Stable" to "Reduced", also the NFT image reference will be changed from "<NFT number>Stable. jpg" to "<numberNFTReduced.jpg" and then these two NFTs will be returned to the player's wallet and then the ASC will automatically start the same player's wallet with NFTs from the "Ag" or "Fr" category depending on the NFTs he provided at the beginning, if 3x from the "S" category and 1x from the "N" category the "Ag" NFT will be started and if 2x from the "S" category and 2x from the "N" category the "Fr" NFT will be started 
 
-Inputs:
-nftIds: An array of NFT IDs that will be combined.
-category: category (Fe or Ca).
-playerWallet: The address of the player who will receive the new token.
+-----------------------------------------------------------------------------------
 
-Output: information about the newly created NFT or a failure message.
+Combination Ag; Fr
 
------------------------------------------------------------------------------------------
+4 - If any player sends 3 pieces of matching NFTs from the "Ag" or "Fr" category to the ASC and ownership of these NFTs is verified to be owned by our ASC. So the player will have to send 2 pieces of NFT "Ag" 1 piece of NFT from category "Fr", other combinations are not allowed and will be returned to the player, at the same time it must be NFT with metadata value Crystals = Stable only. An action will be triggered that will select 1 NFT from the "Ag" category and 1 NFT from the "Fr" category and send them to the wallet address for token burning "0000000000000000000000000000000000000000000000000000" so these two NFTs will be burned and the remaining NFT from the "Ag" category will have its Crystals metadata value changed from "Stable" to "Reduced", also the NFT image reference will be changed from "<NFT number>Stable. jpg" to "<numberNFTReduced.jpg" and then this one NFT from the "Ag" category will be returned to the player's wallet, and then ASC will automatically drop an NFT from the "Fe" category on the same player's wallet, but ASC will set the value of Crystals = Unstable in the metadata 
 
-3. combineSN
+-----------------------------------------------------------------------------------
 
-Description:
-Combines the four NFTs of category "S" (sulfur) and "N" (nitrogen) into a new NFT ("Ag" or "Fr"). Required ratio:
-3x S + 1x N → Ag
-2x S + 2x N → Fr
-When combined, two NFTs are burned, the metadata of the remaining two are updated and the player receives a new token.
+Mint CrystalSynthesizer NFT
 
-Conditions:
-Exactly 4 NFTs must be provided.
-The ratio of categories must follow the rules above.
-The NFT must have the status "Stable".
+5 - Anyone who sends exactly 123.45 MAS tokens to the ASC, I want this wallet to immediately fire an NFT of the category "CrystalSynthesizer" with the metadata value Condition = New and then immediately send exactly 123.2 MAS to the wallet address - MW0rldWallet
 
-Inputs:
-nftIds: An array of NFT IDs to be combined.
-playerWallet: The address of the player who will receive the new token.
+ if any other amount is sent to the ASC it will be immediately returned to the sender minus 0.8 MAS fees, so if someone sends for example 60 MAS tokens to the ASC they will get exactly 59.2 MAS back.
 
-Output: message about the created NFT or information about the combination failure.
 
------------------------------------------------------------------------------------------
-
-4. combineAgFr
-
-Description:
-Combines 3 NFTs of category "Ag" (silver) and "Fr" (francium) to create a new NFT of category "Fe" with status "Unstable".
-Two NFTs are burned, the metadata of the remaining NFT is modified. This feature simulates the higher risk (instability) that corresponds to the game mechanics.
-
-Conditions:
-Exactly 3 NFTs must be provided.
-Ratio: 2x Ag + 1x Fr.
-NFTs must have a "Stable" status.
-
-Inputs:
-nftIds.
-playerWallet: The address of the player who will receive the new token.
-
-Output: message indicating the success or failure of the combination.
-
------------------------------------------------------------------------------------------
-
-5. processMASPayment
-
-Description:
-Processes payments in a MAS token. If the amount of 123.45 MAS is sent, it creates a new NFT of type "CrystalSynthesizer" and redirects the reward to the predefined address (rewardAddress). If the amount is different, the system will refund the difference (refund).
-
-Inputs:
-amount: amount sent in MAS.
-senderWallet: Address of the sender (player).
-
-Output: information about successful NFT creation or refund.
-
------------------------------------------------------------------------------------------
-
-6. verifyNFTs
-
-Description:
-Checks if the given NFTs meet the required conditions, such as correct category or status. This function is auxiliary and is called in the context of other operations (e.g. combination).
-
-Inputs:
-nftIds: The NFT ID field to verify.
-category: the expected category of the NFT.
-status: the desired status of the NFT (e.g. "Stable").
-
-Output: Boolean (true/false) depending on whether the authentication succeeded.
-
------------------------------------------------------------------------------------------
-
-7. updateNFTMetadata
-
-Description:
-Modifies the metadata of the specified NFT. This function allows to change attributes such as status ("Stable" → "Reduced") or visual representation ("Crystals").
-
-Inputs:
-nftIds: Array of NFT IDs to be modified.
-status: the new status of the NFT.
-
-Output: none (asynchronous operations).
