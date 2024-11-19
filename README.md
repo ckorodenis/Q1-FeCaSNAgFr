@@ -3,7 +3,7 @@ Mint NFT by category/parameter
 
 1 - If this ASC is contacted by the owner using his wallet address, private key and the parameter "Fe" or "Ca" or "S" or "N" or "Ag" or "Fr" I want the ASC to output the NFT from the appropriate category according to the type of parameter and the NFT to be output to the player's wallet address which will also be passed to him so we will contact the ASC roughly as follows 
 
-"<ownerwalletaddress> <ownerprivatekey> <parameter> <playerwalletaddress>"  
+```<ownerwalletaddress> <ownerprivatekey> <parameter> <playerwalletaddress>```  
 
 -----------------------------------------------------------------------------------
 
