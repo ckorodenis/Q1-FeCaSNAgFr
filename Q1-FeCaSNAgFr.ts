@@ -1,165 +1,139 @@
-import { SmartContractsClient, WalletClient, Args } from '@massalabs/massa-web3';
+import {
+  Args,
+  stringToBytes,
+  u256ToBytes,
+  bytesToString,
+  bytesToU256,
+  u64ToBytes,
+  bytesToU64,
+} from '@massalabs/as-types';
+import {
+  _constructor,
+  _update,
+} from './NFT-internals';
 
-class QuestContract {
-  private ownerWallet: string = "<OWNER_WALLET_ADDRESS>";
-  private burnAddress: string = "0000000000000000000000000000000000000000000000000000";
-  private rewardAddress: string = "MW0rldWallet";
-  private smartContractsClient: SmartContractsClient;
-  private walletClient: WalletClient;
+import { setOwner, onlyOwner, ownerAddress } from '../utilities/ownership';
+import {
+  Storage,
+  generateEvent,
+  transferCoins,
+  Address,
+} from '@massalabs/massa-as-sdk';
+import { Context, isDeployingContract } from '@massalabs/massa-as-sdk';
+import { u256 } from 'as-bignum/assembly';
 
-  constructor(smartContractsClient: SmartContractsClient, walletClient: WalletClient) {
-    this.smartContractsClient = smartContractsClient;
-    this.walletClient = walletClient;
-  }
+const BASE_URI_KEY = stringToBytes('BASE_URI');
+const MAX_SUPPLY_KEY = stringToBytes('MAX_SUPPLY');
+const COUNTER_KEY = stringToBytes('COUNTER');
 
-  // 1. Mintování NFT podle parametru
-  async mintForPlayer(param: string, playerWallet: string, ownerPrivateKey: string): Promise<string> {
-    if (!this.validateOwner(this.ownerWallet, ownerPrivateKey)) {
-      return "Unauthorized access.";
-    }
+// Helper function for token identification
+function getTokenIdFromId(nftId: string): u256 {
+  let parts = nftId.split('#');
+  return u256.fromString(parts[1]);
+}
 
-    const nftCategory = { Fe: "Iron", Ca: "Calcium", S: "Sulfur", N: "Nitrogen", Ag: "Silver", Fr: "Francium" }[param];
-    if (!nftCategory) return "Invalid parameter.";
+// Helper function to get NFT category from ID
+function getCategoryFromId(nftId: string): string {
+  return nftId.split('#')[0];
+}
 
-    const args = new Args().addString(nftCategory).addString(playerWallet);
-    await this.smartContractsClient.callSmartContract({
-      maxGas: 100000n,
-      address: this.ownerWallet,
-      functionName: 'mintNFT',
-      parameter: args.serialize(),
-    });
+function validateNFTOwnership(nftId: string, owner: string): bool {
+  // Placeholder for ownership validation
+  return true;
+}
 
-    return `NFT (${nftCategory}) minted for wallet: ${playerWallet}`;
-  }
+function validateNFTStatus(nftId: string, status: string): bool {
+  // Placeholder for status validation
+  return true;
+}
 
-  // 2. Kombinace 4x Fe nebo Ca
-  async combineFourNFTs(nftIds: string[], category: string, playerWallet: string): Promise<string> {
-    if (nftIds.length !== 4 || !["Fe", "Ca"].includes(category)) return "Invalid input.";
-    const verified = await this.verifyNFTs(nftIds, category, "Stable");
-    if (!verified) return "NFT validation failed.";
+export function constructor(binaryArgs: StaticArray<u8>): void {
+  assert(isDeployingContract());
+  const args = new Args(binaryArgs);
+  const name = args.nextString().expect('name argument is missing or invalid');
+  const symbol = args.nextString().expect('symbol argument is missing or invalid');
+  _constructor(name, symbol);
+  const owner = args.nextString().expect('owner argument is missing or invalid');
+  setOwner(new Args().add(owner).serialize());
+  const baseURI = args.nextString().expect('baseURI argument is missing or invalid');
 
-    // Burn 2 NFTs and update metadata of the remaining 2
-    await this.burnNFTs(nftIds.slice(0, 2));
-    await this.updateNFTMetadata(nftIds.slice(2), "Reduced");
+  Storage.set(BASE_URI_KEY, stringToBytes(baseURI));
+  Storage.set(MAX_SUPPLY_KEY, u256ToBytes(u256.fromU32(5000)));
+  Storage.set(COUNTER_KEY, u256ToBytes(u256.Zero));
 
-    const rewardCategory = category === "Fe" ? "S" : "N";
-    const args = new Args().addString(rewardCategory).addString(playerWallet);
-    await this.smartContractsClient.callSmartContract({
-      maxGas: 150000n,
-      address: this.ownerWallet,
-      functionName: 'mintRewardNFT',
-      parameter: args.serialize(),
-    });
+  generateEvent('Quest NFT COLLECTION IS DEPLOYED');
+}
 
-    return `NFTs combined and new NFT (${rewardCategory}) minted.`;
-  }
+export function mintNFT(binaryArgs: StaticArray<u8>): void {
+  onlyOwner();
+  const args = new Args(binaryArgs);
+  const nftCategory = args.nextString().expect('NFT category is missing');
+  const to = args.nextString().expect('Recipient is missing');
 
-  // 3. Kombinace S a N
-  async combineSN(nftIds: string[], playerWallet: string): Promise<string> {
-    if (!this.validateSNCombination(nftIds)) return "Invalid combination.";
-    const verified = await this.verifyNFTs(nftIds, null, "Stable");
-    if (!verified) return "NFT verification failed.";
+  let currentSupply = bytesToU256(Storage.get(COUNTER_KEY));
+  let maxSupply = bytesToU256(Storage.get(MAX_SUPPLY_KEY));
+  
+  assert(currentSupply < maxSupply, 'Max supply reached');
 
-    await this.burnNFTs(nftIds.slice(0, 2));
-    await this.updateNFTMetadata(nftIds.slice(2), "Reduced");
+  const newId = currentSupply + u256.One;
+  Storage.set(COUNTER_KEY, u256ToBytes(newId));
+  _update(to, newId, '');
+  generateEvent(`Minted ${nftCategory}#${newId.toString()} to ${to}`);
+}
 
-    const rewardCategory = nftIds.filter(id => id.startsWith("S")).length === 3 ? "Ag" : "Fr";
-    const args = new Args().addString(rewardCategory).addString(playerWallet);
-    await this.smartContractsClient.callSmartContract({
-      maxGas: 150000n,
-      address: this.ownerWallet,
-      functionName: 'mintRewardNFT',
-      parameter: args.serialize(),
-    });
+export function mintRewardNFT(binaryArgs: StaticArray<u8>): void {
+  onlyOwner();
+  const args = new Args(binaryArgs);
+  const category = args.nextString().expect('Category is missing');
+  const to = args.nextString().expect('Recipient is missing');
+  mintNFT(new Args().addString(category).addString(to).serialize());
+}
 
-    return `NFTs combined and new NFT (${rewardCategory}) minted.`;
-  }
+export function mintSpecialNFT(binaryArgs: StaticArray<u8>): void {
+  onlyOwner();
+  const args = new Args(binaryArgs);
+  const nftCategory = args.nextString().expect('NFT category is missing');
+  const to = args.nextString().expect('Recipient is missing');
+  mintNFT(new Args().addString(nftCategory).addString(to).serialize());
+}
 
-  // 4. Kombinace Ag a Fr
-  async combineAgFr(nftIds: string[], playerWallet: string): Promise<string> {
-    if (nftIds.length !== 3 || nftIds.filter(id => id.startsWith("Ag")).length !== 2 || nftIds.filter(id => id.startsWith("Fr")).length !== 1) {
-      return "Invalid combination.";
-    }
-
-    const verified = await this.verifyNFTs(nftIds, null, "Stable");
-    if (!verified) return "NFT verification failed.";
-
-    await this.burnNFTs(nftIds.slice(0, 2));
-    await this.updateNFTMetadata(nftIds.slice(2), "Reduced");
-
-    const args = new Args().addString("Fe").addString(playerWallet).addString("Unstable");
-    await this.smartContractsClient.callSmartContract({
-      maxGas: 150000n,
-      address: this.ownerWallet,
-      functionName: 'mintRewardNFT',
-      parameter: args.serialize(),
-    });
-
-    return `NFTs combined and new NFT (Fe) minted with metadata Crystals = Unstable.`;
-  }
-
-  // 5. Zpracování MAS plateb
-  async processMASPayment(amount: number, senderWallet: string): Promise<string> {
-    if (amount === 123.45) {
-      const args = new Args().addString("CrystalSynthesizer").addString(senderWallet).addString("New");
-      await this.smartContractsClient.callSmartContract({
-        maxGas: 150000n,
-        address: this.ownerWallet,
-        functionName: 'mintSpecialNFT',
-        parameter: args.serialize(),
-      });
-
-      await this.walletClient.sendTransaction({
-        amount: 123.2n,
-        recipient: this.rewardAddress,
-        senderWallet,
-      });
-
-      return `NFT minted and payment processed.`;
-    } else {
-      const refund = amount - 0.8;
-      await this.walletClient.sendTransaction({
-        amount: BigInt(refund * 1e9),
-        recipient: senderWallet,
-        senderWallet,
-      });
-
-      return `Invalid amount. Refunded: ${refund} MAS.`;
-    }
-  }
-
-  // Auxiliary functions
-  private async verifyNFTs(nftIds: string[], category: string | null, status: string): Promise<boolean> {
-    // Logic for verifying NFT ownership and metadata
-    return true; // Mock implementation
-  }
-
-  private async updateNFTMetadata(nftIds: string[], newStatus: string): Promise<void> {
-    for (const nftId of nftIds) {
-      // Update metadata for each NFT
-    }
-  }
-
-  private async burnNFTs(nftIds: string[]): Promise<void> {
-    const args = new Args().addStringArray(nftIds);
-    await this.smartContractsClient.callSmartContract({
-      maxGas: 100000n,
-      address: this.burnAddress,
-      functionName: 'burn',
-      parameter: args.serialize(),
-    });
-  }
-
-  private validateOwner(ownerWallet: string, privateKey: string): boolean {
-    // Validate owner logic
-    return true; // Mock implementation
-  }
-
-  private validateSNCombination(nftIds: string[]): boolean {
-    const countS = nftIds.filter(id => id.startsWith("S")).length;
-    const countN = nftIds.filter(id => id.startsWith("N")).length;
-    return (countS === 3 && countN === 1) || (countS === 2 && countN === 2);
+export function burn(binaryArgs: StaticArray<u8>): void {
+  onlyOwner();
+  const args = new Args(binaryArgs);
+  const nftIds = args.nextStringArray().expect('NFT IDs are missing');
+  for (let i = 0; i < nftIds.length; i++) {
+    let nftId = nftIds[i];
+    // Here we would remove the NFT from storage, but for now, we'll just log it
+    generateEvent(`Burned ${nftId}`);
   }
 }
 
-export default QuestContract;
+// Placeholder for these functions, they need to be implemented properly
+export function updateNFTMetadata(binaryArgs: StaticArray<u8>): void {
+  // Logic to update NFT metadata
+}
+
+export function verifyNFTs(binaryArgs: StaticArray<u8>): StaticArray<u8> {
+  // Logic to verify NFTs
+  return boolToByte(true);
+}
+
+export function processMASPayment(binaryArgs: StaticArray<u8>): void {
+  const args = new Args(binaryArgs);
+  const amount = bytesToU64(args.nextU64().expect('Amount is missing'));
+  const senderWallet = args.nextString().expect('Sender wallet is missing');
+
+  const expectedAmount = u64.fromU32(12345000); // 123.45 MAS in nanoMAS
+
+  if (amount == expectedAmount) {
+    mintSpecialNFT(new Args().addString("CrystalSynthesizer").addString(senderWallet).serialize());
+    transferCoins(new Address(bytesToString(ownerAddress([]))), amount - u64.fromU32(232000)); // 123.2 MAS to reward address in nanoMAS
+  } else {
+    transferCoins(new Address(senderWallet), amount); // Refund
+  }
+}
+
+// Placeholder for owner validation
+function validateOwner(): bool {
+  return Context.caller().toString() == bytesToString(Storage.get(ownerAddress([])));
+}
